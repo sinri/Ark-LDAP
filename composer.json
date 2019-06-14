@@ -1,0 +1,27 @@
+{
+  "name": "sinri/ark-ldap",
+  "description": "Quick Access to LDAP",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Sinri Edogawa",
+      "email": "e.joshua.s.e@gmail.com"
+    }
+  ],
+  "minimum-stability": "stable",
+  "require": {
+    "sinri/ark-core": "^2.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "sinri\\ark\\ldap\\": "src/"
+    }
+  },
+  "repositories": {
+    "packagist": {
+      "type": "composer",
+      "url": "https://packagist.laravel-china.org"
+    }
+  }
+}
