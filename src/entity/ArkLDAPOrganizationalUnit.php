@@ -70,12 +70,20 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
         return $this->arkLdap->addEntry($dn, $entry);
     }
 
+    /**
+     * @param $name
+     * @param array $attributes
+     * @return bool
+     */
     public function createSubUser($name, $attributes = [])
     {
         $userDNEntity = $this->dnEntity->makeSubItemDNWithCN($name);
         return ArkLDAPUser::createNewUser($this->arkLdap, $userDNEntity, $attributes);
     }
 
+    /**
+     * @return ArkLDAPUser[]
+     */
     public function getSubUsers()
     {
         $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "(&(cn=*)(objectclass=user))");
@@ -87,6 +95,20 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
         return $list;
     }
 
+    /**
+     * @param $name
+     * @return bool|ArkLDAPUser
+     */
+    public function getSubUserByName($name)
+    {
+        $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "(&(cn=" . ArkLDAP::escapeSearchFilterArgument($name) . ")(objectclass=user))");
+        if (empty($subOUs)) return false;
+        return ArkLDAPUser::loadUserByDNString($this->arkLdap, $subOUs[0]->getDN());
+    }
+
+    /**
+     * @return ArkLDAPGroup[]
+     */
     public function getSubGroups()
     {
         $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "(&(cn=*)(objectclass=group))");
@@ -98,6 +120,20 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
         return $list;
     }
 
+    /**
+     * @param string $name
+     * @return bool|ArkLDAPGroup
+     */
+    public function getSubGroupByName($name)
+    {
+        $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "(&(cn=" . ArkLDAP::escapeSearchFilterArgument($name) . ")(objectclass=group))");
+        if (empty($subOUs)) return false;
+        return ArkLDAPGroup::loadGroupByDNString($this->arkLdap, $subOUs[0]->getDN());
+    }
+
+    /**
+     * @return ArkLDAPOrganizationalUnit[]
+     */
     public function getSubOrganizationalUnits()
     {
         $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "ou=*");
@@ -107,6 +143,17 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
             $list[] = ArkLDAPOrganizationalUnit::loadOrganizationalUnitByDNString($this->arkLdap, $subOUItem->getDN());
         }
         return $list;
+    }
+
+    /**
+     * @param string $name
+     * @return bool|ArkLDAPOrganizationalUnit
+     */
+    public function getSubOrganizationalUnitByName($name)
+    {
+        $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "ou=" . ArkLDAP::escapeSearchFilterArgument($name));
+        if (empty($subOUs)) return false;
+        return ArkLDAPOrganizationalUnit::loadOrganizationalUnitByDNString($this->arkLdap, $subOUs[0]->getDN());
     }
 
     /**
