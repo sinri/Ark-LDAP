@@ -64,6 +64,7 @@ class ArkLDAP
     }
 
     /**
+     * LDAP_SCOPE_SUBTREE
      * @param $baseDN
      * @param $filter
      * @param null $attrNames
@@ -80,8 +81,63 @@ class ArkLDAP
             return false;
         }
 
+        return $this->fetchResultResource($searchResult);
+    }
+
+    /**
+     * LDAP_SCOPE_BASE
+     * @param $baseDN
+     * @param $filter
+     * @param null $attrNames
+     * @return bool|ArkLDAPItem[]
+     */
+    public function readAll($baseDN, $filter, $attrNames = null)
+    {
+        if ($attrNames === null)
+            $readResult = ldap_read($this->connection, $baseDN, $filter);
+        else
+            $readResult = ldap_read($this->connection, $baseDN, $filter, $attrNames);
+        if (!$readResult) {
+            $this->logger->warning(__METHOD__ . '@' . __LINE__ . " search result empty", ['dn' => $baseDN, 'filter' => $filter, 'attr' => $attrNames, 'error' => ldap_error($this->connection)]);
+            return false;
+        }
+
+        return $this->fetchResultResource($readResult);
+    }
+
+    /**
+     * LDAP_SCOPE_ONELEVEL
+     * @param $baseDN
+     * @param $filter
+     * @param null $attrNames
+     * @return bool|ArkLDAPItem[]
+     */
+    public function listAll($baseDN, $filter, $attrNames = null)
+    {
+        if ($attrNames === null)
+            $readResult = ldap_list($this->connection, $baseDN, $filter);
+        else
+            $readResult = ldap_list($this->connection, $baseDN, $filter, $attrNames);
+        if (!$readResult) {
+            $this->logger->warning(__METHOD__ . '@' . __LINE__ . " search result empty", ['dn' => $baseDN, 'filter' => $filter, 'attr' => $attrNames, 'error' => ldap_error($this->connection)]);
+            return false;
+        }
+
+        return $this->fetchResultResource($readResult);
+    }
+
+    /**
+     * @param $result
+     * @return ArkLDAPItem[]|bool
+     */
+    protected function fetchResultResource($result)
+    {
+        if (!$result) {
+            return false;
+        }
+
         $total = [];
-        $entryResource = ldap_first_entry($this->connection, $searchResult);
+        $entryResource = ldap_first_entry($this->connection, $result);
         while ($entryResource) {
             $info = ldap_get_attributes($this->connection, $entryResource);
             $total[] = new ArkLDAPItem($info);
@@ -90,28 +146,6 @@ class ArkLDAP
 
         return $total;
     }
-
-//    protected function debugDumpSearchResultEntries($info)
-//    {
-//        try {
-//            $objectClass = new ArkLDAPObjectClass($info);
-//
-//            $count = $objectClass->getCount();
-//            echo "count: " . $count . PHP_EOL;
-//            for ($i = 0; $i < $count; $i++) {
-//                echo "ITEM $i:" . PHP_EOL;
-//                $rawItem = $objectClass->getRawItemByIndex($i);
-//                $item = new ArkLDAPItem($rawItem);
-//
-//                echo "DN : " . $item->getDN() . PHP_EOL;
-//                echo "Surname: " . $item->getFieldValue(ArkLDAPItem::FIELD_SURNAME) . PHP_EOL;
-//                echo "Display: " . $item->getFieldValue(ArkLDAPItem::FIELD_DISPLAY_NAME) . PHP_EOL;
-//
-//            }
-//        } catch (Exception $e) {
-//            echo "Exception: " . $e->getMessage() . PHP_EOL;
-//        }
-//    }
 
     public function addEntry($dn, $entry)
     {
@@ -145,7 +179,21 @@ class ArkLDAP
         }
     }
 
-    public function modifyEntry($dn, $entry)
+    public function modifyEntryAddAttributes($dn, $entry)
+    {
+        $done = ldap_mod_add($this->connection, $dn, $entry);
+        if (!$done) $this->logger->warning(__METHOD__ . '@' . __LINE__ . ' failed to modify entry', ['dn' => $dn, 'entry' => $entry, 'error' => ldap_error($this->connection)]);
+        return $done;
+    }
+
+    public function modifyEntryDeleteAttributes($dn, $entry)
+    {
+        $done = ldap_mod_del($this->connection, $dn, $entry);
+        if (!$done) $this->logger->warning(__METHOD__ . '@' . __LINE__ . ' failed to modify entry', ['dn' => $dn, 'entry' => $entry, 'error' => ldap_error($this->connection)]);
+        return $done;
+    }
+
+    public function modifyEntryReplaceAttributes($dn, $entry)
     {
         $done = ldap_mod_replace($this->connection, $dn, $entry);
         if (!$done) $this->logger->warning(__METHOD__ . '@' . __LINE__ . ' failed to modify entry', ['dn' => $dn, 'entry' => $entry, 'error' => ldap_error($this->connection)]);
@@ -172,9 +220,16 @@ class ArkLDAP
 
     public static function escapeSearchFilterArgument($argument)
     {
-        $argument = str_replace("(", "\(", $argument);
-        $argument = str_replace(")", "\)", $argument);
-        return $argument;
+        //$argument = str_replace("(", "\(", $argument);
+        //$argument = str_replace(")", "\)", $argument);
+        //return $argument;
+
+        return ldap_escape($argument, '', LDAP_ESCAPE_FILTER);
+    }
+
+    public static function escapeDNArgument($argument)
+    {
+        return ldap_escape($argument, '', LDAP_ESCAPE_DN);
     }
 
     public static function parseDN($dn)

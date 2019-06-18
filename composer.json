@@ -11,11 +11,18 @@
   ],
   "minimum-stability": "stable",
   "require": {
-    "sinri/ark-core": "^2.0"
+    "sinri/ark-core": "^2.0",
+    "ext-ldap": "*",
+    "ext-json": "*"
   },
   "autoload": {
     "psr-4": {
       "sinri\\ark\\ldap\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "sinri\\ark\\ldap\\test\\": "test/"
     }
   },
   "repositories": {
