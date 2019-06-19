@@ -103,7 +103,7 @@ class ArkLDAPDistinguishedNameEntity
     public function makeSubItemDNWithDC($dcName)
     {
         $newEntity = new ArkLDAPDistinguishedNameEntity();
-        $newEntity->dict = json_decode(json_encode($this->dict), true);
+        $newEntity->dict = $this->dict;
         array_unshift($newEntity->dict[self::DOMAIN_COMPONENT], $dcName);
         return $newEntity;
     }
@@ -111,7 +111,7 @@ class ArkLDAPDistinguishedNameEntity
     public function makeSubItemDNWithOU($ouName)
     {
         $newEntity = new ArkLDAPDistinguishedNameEntity();
-        $newEntity->dict = json_decode(json_encode($this->dict), true);
+        $newEntity->dict = $this->dict;
         array_unshift($newEntity->dict[self::ORGANIZATIONAL_UNIT], $ouName);
         return $newEntity;
     }
@@ -119,7 +119,7 @@ class ArkLDAPDistinguishedNameEntity
     public function makeSubItemDNWithCN($cnName)
     {
         $newEntity = new ArkLDAPDistinguishedNameEntity();
-        $newEntity->dict = json_decode(json_encode($this->dict), true);
+        $newEntity->dict = $this->dict;
         array_unshift($newEntity->dict[self::COMMON_NAME], $cnName);
         return $newEntity;
     }

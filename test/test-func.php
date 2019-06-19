@@ -25,7 +25,7 @@ function dumpOUEntity($baseOU)
             if (empty($value)) echo "Empty Array" . PHP_EOL;
             else echo "Array of " . implode(" , ", $value) . PHP_EOL;
         } else {
-            echo json_encode($value) . PHP_EOL;
+            echo json_encode($value, JSON_UNESCAPED_UNICODE) . PHP_EOL;
         }
     }
     echo "======" . PHP_EOL;
@@ -54,7 +54,7 @@ function dumpUserEntity($user)
             if (empty($value)) echo "Empty Array" . PHP_EOL;
             else echo "Array of " . implode(" , ", $value) . PHP_EOL;
         } else {
-            echo json_encode($value) . PHP_EOL;
+            echo json_encode($value, JSON_UNESCAPED_UNICODE) . PHP_EOL;
         }
     }
     echo "======" . PHP_EOL;
@@ -77,7 +77,7 @@ function dumpGroupEntity($group)
             if (empty($value)) echo "Empty Array" . PHP_EOL;
             else echo "Array of " . implode(" , ", $value) . PHP_EOL;
         } else {
-            echo json_encode($value) . PHP_EOL;
+            echo json_encode($value, JSON_UNESCAPED_UNICODE) . PHP_EOL;
         }
     }
     echo "======" . PHP_EOL;

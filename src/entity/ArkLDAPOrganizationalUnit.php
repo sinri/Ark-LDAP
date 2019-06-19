@@ -62,8 +62,8 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
 
     public function createSubOrganizationalUnit($name, $attributes = [])
     {
-        $dn = "ou=" . ArkLDAP::escapeDNArgument($name) . "," . $this->data->getDN();
-        $entry = json_decode(json_encode($attributes), true);
+        $dn = $this->dnEntity->makeSubItemDNWithOU($name)->generateDNString();
+        $entry = $attributes;
         $entry['objectclass'] = ["top", "organizationalUnit"];
 //        $entry['distinguishedname']=$name;
         $entry['name'] = $name;
