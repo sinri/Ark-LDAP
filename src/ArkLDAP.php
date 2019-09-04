@@ -250,4 +250,17 @@ class ArkLDAP
 
         return $result;
     }
+
+    /**
+     * @param string $dnOfUser
+     * @param null $oldPassword
+     * @param null $newPassword
+     * @return bool|string
+     * @since 0.0.3
+     * @uses PHP 7.2
+     */
+    public function modifyUserPasswordExOp($dnOfUser, $oldPassword = null, $newPassword = null)
+    {
+        return ldap_exop_passwd($this->connection, $dnOfUser, $oldPassword, $newPassword);
+    }
 }
