@@ -151,4 +151,17 @@ class ArkLDAPItem extends ArkLDAPObjectClass
     {
         return "{ArkLDAPItem|" . $this->getDN() . "}";
     }
+
+    /**
+     * @return string
+     * @since 0.0.4
+     */
+    public function getNextSidForPartialSearch()
+    {
+        list($sid) = $this->getFieldValues('objectSid');
+        list($v) = array_values(unpack('V', substr($sid, 24))); // id for user.
+        $s = substr($sid, 0, 24) . pack('V', 1 + $v); // next sid.
+        $s = preg_replace('/../', '\\\\$0', bin2hex($s)); // escape for fiter
+        return $s;
+    }
 }

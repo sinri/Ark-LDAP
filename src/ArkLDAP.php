@@ -65,17 +65,17 @@ class ArkLDAP
 
     /**
      * LDAP_SCOPE_SUBTREE
-     * @param $baseDN
-     * @param $filter
-     * @param null $attrNames
+     * @param string $baseDN
+     * @param string $filter
+     * @param string[] $attrNames
+     * @param int $attrsOnly @since 0.0.4
+     * @param int $sizeLimit @since 0.0.4
+     * @param int $timeLimit @since 0.0.4
      * @return ArkLDAPItem[]|bool
      */
-    public function searchAll($baseDN, $filter, $attrNames = null)
+    public function searchAll($baseDN, $filter, $attrNames = ['*'], $attrsOnly = 0, $sizeLimit = 0, $timeLimit = 0)
     {
-        if (is_array($attrNames))
-            $searchResult = ldap_search($this->connection, $baseDN, $filter, $attrNames);
-        else
-            $searchResult = ldap_search($this->connection, $baseDN, $filter);
+        $searchResult = ldap_search($this->connection, $baseDN, $filter, $attrNames, $attrsOnly, $sizeLimit, $timeLimit);
         if (!$searchResult) {
             $this->logger->warning(__METHOD__ . '@' . __LINE__ . " search result empty", ['dn' => $baseDN, 'filter' => $filter, 'attr' => $attrNames, 'error' => ldap_error($this->connection)]);
             return false;
@@ -262,5 +262,14 @@ class ArkLDAP
     public function modifyUserPasswordExOp($dnOfUser, $oldPassword = null, $newPassword = null)
     {
         return ldap_exop_passwd($this->connection, $dnOfUser, $oldPassword, $newPassword);
+    }
+
+    /**
+     * @return resource|false
+     * @since 0.0.4
+     */
+    public function getConnection()
+    {
+        return $this->connection ? $this->connection : false;
     }
 }
