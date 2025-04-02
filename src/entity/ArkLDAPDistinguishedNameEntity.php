@@ -6,21 +6,32 @@ namespace sinri\ark\ldap\entity;
 
 use sinri\ark\core\ArkHelper;
 
+/**
+ * Represents an LDAP Distinguished Name (DN) entity, which is used to uniquely identify entries in an LDAP directory.
+ * The DN is composed of one or more Relative Distinguished Names (RDNs), which are key-value pairs.
+ * Common keys include:
+ * - cn (Common Name)
+ * - ou (Organizational Unit)
+ * - dc (Domain Component)
+ *
+ * Example: cn=John Doe,ou=People,dc=example,dc=com
+ */
 class ArkLDAPDistinguishedNameEntity
 {
     const DOMAIN_COMPONENT = "dc";
     const ORGANIZATIONAL_UNIT = "ou";
     const COMMON_NAME = "cn";
 
-    protected $dict;
+    protected array $dict;
 
     /**
-     * ArkLDAPDistinguishedNameEntity constructor.
-     * @param string[] $cn
-     * @param string[] $ou
-     * @param string[] $dc
+     * Constructs a new instance of the class with the provided common name, organizational unit, and domain component.
+     *
+     * @param string[] $cn An array of common name items.
+     * @param string[] $ou An array of organizational unit items.
+     * @param string[] $dc An array of domain component items.
      */
-    public function __construct($cn = [], $ou = [], $dc = [])
+    public function __construct(array $cn = [], array $ou = [], array $dc = [])
     {
         $this->dict = [
             self::COMMON_NAME => $cn,
@@ -30,33 +41,42 @@ class ArkLDAPDistinguishedNameEntity
     }
 
     /**
-     * @return string[]
+     * Retrieves the domain component items from the dictionary.
+     *
+     * @return string[] An array of domain component items.
      */
-    public function getDomainComponentItems()
+    public function getDomainComponentItems(): array
     {
         return ArkHelper::readTarget($this->dict, [self::DOMAIN_COMPONENT], []);
     }
 
+
     /**
-     * @return string[]
+     * Retrieves the organizational unit items from the dictionary.
+     *
+     * @return string[] An array of organizational unit items.
      */
-    public function getOrganizationalUnitItems()
+    public function getOrganizationalUnitItems(): array
     {
         return ArkHelper::readTarget($this->dict, [self::ORGANIZATIONAL_UNIT], []);
     }
 
     /**
-     * @return string[]
+     * Retrieves the common name items from the dictionary.
+     *
+     * @return string[] An array of common name items.
      */
-    public function getCommonNameItems()
+    public function getCommonNameItems(): array
     {
         return ArkHelper::readTarget($this->dict, [self::COMMON_NAME], []);
     }
 
     /**
-     * @return string
+     * Generates a Distinguished Name (DN) string based on the common name, organizational unit, and domain component items.
+     *
+     * @return string The generated DN string.
      */
-    public function generateDNString()
+    public function generateDNString(): string
     {
         $dn = "";
         $cns = $this->getCommonNameItems();
@@ -75,10 +95,12 @@ class ArkLDAPDistinguishedNameEntity
     }
 
     /**
-     * @param string $dn
-     * @return ArkLDAPDistinguishedNameEntity
+     * Parses a Distinguished Name (DN) string and returns an ArkLDAPDistinguishedNameEntity object.
+     *
+     * @param string $dn The DN string to be parsed.
+     * @return ArkLDAPDistinguishedNameEntity An object containing the parsed components of the DN string.
      */
-    public static function parseFromDNString($dn)
+    public static function parseFromDNString(string $dn): ArkLDAPDistinguishedNameEntity
     {
         $components = preg_split('/\s*,\s*/', $dn);
         $result = [
@@ -100,7 +122,13 @@ class ArkLDAPDistinguishedNameEntity
         return $entity;
     }
 
-    public function makeSubItemDNWithDC($dcName)
+    /**
+     * Creates a new ArkLDAPDistinguishedNameEntity with the provided domain component (DC) added to the beginning of the existing DC list.
+     *
+     * @param string $dcName The name of the domain component to be added.
+     * @return ArkLDAPDistinguishedNameEntity A new instance of ArkLDAPDistinguishedNameEntity with the updated domain component.
+     */
+    public function makeSubItemDNWithDC(string $dcName): ArkLDAPDistinguishedNameEntity
     {
         $newEntity = new ArkLDAPDistinguishedNameEntity();
         $newEntity->dict = $this->dict;
@@ -108,7 +136,13 @@ class ArkLDAPDistinguishedNameEntity
         return $newEntity;
     }
 
-    public function makeSubItemDNWithOU($ouName)
+    /**
+     * Creates a new ArkLDAPDistinguishedNameEntity with the specified organizational unit (OU) added to the beginning of the OU list.
+     *
+     * @param string $ouName The name of the organizational unit to add.
+     * @return ArkLDAPDistinguishedNameEntity A new instance of ArkLDAPDistinguishedNameEntity with the updated OU.
+     */
+    public function makeSubItemDNWithOU(string $ouName): ArkLDAPDistinguishedNameEntity
     {
         $newEntity = new ArkLDAPDistinguishedNameEntity();
         $newEntity->dict = $this->dict;
@@ -116,7 +150,13 @@ class ArkLDAPDistinguishedNameEntity
         return $newEntity;
     }
 
-    public function makeSubItemDNWithCN($cnName)
+    /**
+     * Creates a new ArkLDAPDistinguishedNameEntity with the provided common name (CN) added as a sub-item.
+     *
+     * @param string $cnName The common name to be added to the Distinguished Name (DN).
+     * @return ArkLDAPDistinguishedNameEntity A new entity with the updated CN.
+     */
+    public function makeSubItemDNWithCN(string $cnName): ArkLDAPDistinguishedNameEntity
     {
         $newEntity = new ArkLDAPDistinguishedNameEntity();
         $newEntity->dict = $this->dict;
@@ -124,7 +164,15 @@ class ArkLDAPDistinguishedNameEntity
         return $newEntity;
     }
 
-    public function loadMoveDestinationArguments(&$name, &$parent)
+    /**
+     * Loads the move destination arguments for a distinguished name (DN) based on the available common name, organizational unit, or domain component.
+     *
+     * @param string $name Reference to the variable that will hold the name part of the DN.
+     * @param string $parent Reference to the variable that will hold the parent part of the DN.
+     *
+     * @return void
+     */
+    public function loadMoveDestinationArguments(string &$name, string &$parent)
     {
         if (!empty($this->dict[self::COMMON_NAME])) {
             $name = "cn=" . array_shift($this->dict[self::COMMON_NAME]);

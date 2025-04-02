@@ -4,47 +4,84 @@
 namespace sinri\ark\ldap;
 
 
-use sinri\ark\core\ArkHelper;
+use sinri\ark\ldap\exception\ArkLDAPDataInvalid;
 
+/**
+ * Class ArkLDAPObjectClass
+ * This class provides a wrapper for LDAP object class data structures.
+ * It handles the raw array data returned from LDAP operations and provides methods to access and manipulate this data.
+ * 
+ * Key features:
+ * - Wraps raw LDAP array data
+ * - Provides safe access to count and indexed items
+ * - Handles type checking and validation
+ * - Throws ArkLDAPDataInvalid exceptions for invalid operations
+ * 
+ * @package sinri\ark\ldap
+ */
 class ArkLDAPObjectClass
 {
-    protected $rawArray;
+    /**
+     * @var array
+     */
+    protected array $rawArray;
 
-    public function __construct($array)
+    public function __construct(array $array)
     {
         $this->rawArray = $array;
     }
 
-    public function getCount()
+    /**
+     * Get the count of items in the LDAP object class.
+     * This method returns the number of items in the LDAP object class data structure.
+     * It validates that the 'count' key exists and contains an integer value.
+     * @return int The number of items in the LDAP object class
+     * @throws ArkLDAPDataInvalid
+     */
+    public function getCount(): int
     {
-        return ArkHelper::readTarget($this->rawArray, ['count'], 0);
+        if (!array_key_exists('count', $this->rawArray)) {
+            throw new ArkLDAPDataInvalid("Key count is not found.");
+        }
+        $x = $this->rawArray['count'];
+        if (!is_int($x)) {
+            throw new ArkLDAPDataInvalid("Value mapped to key count is not an integer.");
+        }
+        return $x;
     }
 
     /**
-     * @param $index
-     * @return mixed|null
+     * Get the raw array data structure.
+     * This method returns the raw array data structure that the class is wrapping.
+     * The raw array contains the raw data returned from LDAP operations.
+     * @param int $index
+     * @return mixed any raw data mapped by the index
+     * @throws ArkLDAPDataInvalid the index is out of bound
      */
-    public function getRawItemByIndex($index)
+    public function getRawItemByIndex(int $index)
     {
-        if ($index < 0 || $index >= $this->getCount()) {
-            //throw new Exception("Index Out Of Bound");
-            return false;
+        if (array_key_exists($index, $this->rawArray)) {
+            return $this->rawArray[$index];
+        } else {
+            throw new ArkLDAPDataInvalid("Index is not valid");
         }
-        return ArkHelper::readTarget($this->rawArray, [$index]);
     }
 
     /**
-     * @param $index
-     * @return bool|ArkLDAPObjectClass
+     * Get the object class by index by wrapping the raw data into an ArkLDAPObjectClass instance.
+     * This method returns the object class at the specified index.
+     * If the index is out of bound, it throws an exception.
+     * If the raw data mapped to the index is null, it returns null.
+     * @param int $index
+     * @return ArkLDAPObjectClass|null The object class at the specified index, or null if the index is out of bound.
+     * @throws ArkLDAPDataInvalid
      */
-    public function getObjectClassByIndex($index)
+    public function getObjectClassByIndex(int $index): ArkLDAPObjectClass
     {
-        if ($index < 0 || $index >= $this->getCount()) {
-            //throw new Exception("Index Out Of Bound");
-            return false;
+        $rawItem = $this->getRawItemByIndex($index);
+        if (!is_array($rawItem)) {
+            throw new ArkLDAPDataInvalid("LDAP Object Class is null.");
         }
-        $x = ArkHelper::readTarget($this->rawArray, [$index]);
-        if (empty($x)) return false;
-        return new ArkLDAPObjectClass($x);
+        return new ArkLDAPObjectClass($rawItem);
     }
 }

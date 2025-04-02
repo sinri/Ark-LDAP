@@ -5,10 +5,14 @@ namespace sinri\ark\ldap\entity;
 
 
 use sinri\ark\ldap\ArkLDAP;
+use sinri\ark\ldap\exception\ArkLDAPDataInvalid;
+use sinri\ark\ldap\exception\ArkLDAPModifyFailed;
+use sinri\ark\ldap\exception\ArkLDAPReadFailed;
+use UnexpectedValueException;
 
 class ArkLDAPGroup extends ArkLDAPTopEntity
 {
-    public function getEntityClassType()
+    public function getEntityClassType(): string
     {
         return "group";
     }
@@ -16,13 +20,15 @@ class ArkLDAPGroup extends ArkLDAPTopEntity
     /**
      * @param ArkLDAP $arkLdap
      * @param string $dn
-     * @return bool|ArkLDAPGroup
+     * @return ArkLDAPGroup
+     * @throws ArkLDAPDataInvalid
+     * @throws ArkLDAPReadFailed
      */
-    public static function loadGroupByDNString($arkLdap, $dn)
+    public static function loadGroupByDNString(ArkLDAP $arkLdap, string $dn): ArkLDAPGroup
     {
         $list = $arkLdap->readAll($dn, "name=*");
         if (empty($list)) {
-            return false;
+            throw new UnexpectedValueException("No result found for DN.");
         }
         $arkGroup = new ArkLDAPGroup($arkLdap);
         $arkGroup->data = $list[0];
@@ -33,15 +39,20 @@ class ArkLDAPGroup extends ArkLDAPTopEntity
     /**
      * @param ArkLDAP $arkLdap
      * @param string $dn
-     * @return bool
+     * @throws ArkLDAPModifyFailed
      */
-    public static function createGroup($arkLdap, $dn)
+    public static function createGroup(ArkLDAP $arkLdap, string $dn)
     {
         $entry = ['objectclass' => ['top', 'group']];
-        return $arkLdap->addEntry($dn, $entry);
+        $arkLdap->addEntry($dn, $entry);
     }
 
-    public function getMembers()
+    /**
+     * @return ArkLDAPUser[]
+     * @throws ArkLDAPDataInvalid
+     * @throws ArkLDAPReadFailed
+     */
+    public function getMembers(): array
     {
         $members = $this->data->getFieldValues('member');
         if (empty($members)) return [];
@@ -53,29 +64,30 @@ class ArkLDAPGroup extends ArkLDAPTopEntity
     }
 
     /**
-     * @param $members
-     * @return bool
+     * @param array $members
+     * @throws ArkLDAPModifyFailed
      */
-    public function addMembers($members)
+    public function addMembers(array $members)
     {
-        return $this->arkLdap->modifyEntryAddAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
+        $this->arkLdap->modifyEntryAddAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
     }
 
     /**
-     * @param $members
-     * @return bool
+     * @param array $members
+     * @throws ArkLDAPModifyFailed
      */
-    public function removeMembers($members)
+    public function removeMembers(array $members)
     {
-        return $this->arkLdap->modifyEntryDeleteAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
+        $this->arkLdap->modifyEntryDeleteAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
     }
 
     /**
-     * @param $members
-     * @return bool
+     * @param array $members
+     * @return void
+     * @throws ArkLDAPModifyFailed
      */
-    public function setMembers($members)
+    public function setMembers(array $members)
     {
-        return $this->arkLdap->modifyEntryReplaceAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
+        $this->arkLdap->modifyEntryReplaceAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
     }
 }

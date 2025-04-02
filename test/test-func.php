@@ -3,13 +3,17 @@
 use sinri\ark\ldap\entity\ArkLDAPGroup;
 use sinri\ark\ldap\entity\ArkLDAPOrganizationalUnit;
 use sinri\ark\ldap\entity\ArkLDAPUser;
+use sinri\ark\ldap\exception\ArkLDAPDataInvalid;
+use sinri\ark\ldap\exception\ArkLDAPReadFailed;
 
 require_once __DIR__ . '/../autoload.php';
 
 /**
  * @param ArkLDAPOrganizationalUnit $baseOU
+ * @throws ArkLDAPDataInvalid
+ * @throws ArkLDAPReadFailed
  */
-function dumpOUEntity($baseOU)
+function dumpOUEntity(ArkLDAPOrganizationalUnit $baseOU)
 {
     $dict = [
         "dn" => $baseOU->getDistinguishedName(),
@@ -33,8 +37,9 @@ function dumpOUEntity($baseOU)
 
 /**
  * @param ArkLDAPUser $user
+ * @throws ArkLDAPDataInvalid
  */
-function dumpUserEntity($user)
+function dumpUserEntity(ArkLDAPUser $user)
 {
     $dict = [
         "dn" => $user->getDistinguishedName(),
@@ -62,8 +67,10 @@ function dumpUserEntity($user)
 
 /**
  * @param ArkLDAPGroup $group
+ * @throws ArkLDAPDataInvalid
+ * @throws ArkLDAPReadFailed
  */
-function dumpGroupEntity($group)
+function dumpGroupEntity(ArkLDAPGroup $group)
 {
     $dict = [
         "dn" => $group->getDistinguishedName(),

@@ -6,10 +6,14 @@ namespace sinri\ark\ldap\entity;
 
 use sinri\ark\ldap\ArkLDAP;
 use sinri\ark\ldap\ArkLDAPItem;
+use sinri\ark\ldap\exception\ArkLDAPDataInvalid;
+use sinri\ark\ldap\exception\ArkLDAPModifyFailed;
+use sinri\ark\ldap\exception\ArkLDAPReadFailed;
+use UnexpectedValueException;
 
 class ArkLDAPUser extends ArkLDAPTopEntity
 {
-    public function getEntityClassType()
+    public function getEntityClassType(): string
     {
         return "user";
     }
@@ -17,13 +21,15 @@ class ArkLDAPUser extends ArkLDAPTopEntity
     /**
      * @param ArkLDAP $arkLdap
      * @param string $dn
-     * @return bool|ArkLDAPUser
+     * @return ArkLDAPUser
+     * @throws ArkLDAPDataInvalid
+     * @throws ArkLDAPReadFailed
      */
-    public static function loadUserByDNString($arkLdap, $dn)
+    public static function loadUserByDNString(ArkLDAP $arkLdap, string $dn): ArkLDAPUser
     {
         $list = $arkLdap->readAll($dn, "name=*");
         if (empty($list)) {
-            return false;
+            throw new UnexpectedValueException("No result found for DN.");
         }
         $arkCN = new ArkLDAPUser($arkLdap);
         $arkCN->data = $list[0];
@@ -31,58 +37,91 @@ class ArkLDAPUser extends ArkLDAPTopEntity
         return $arkCN;
     }
 
-    public function getSurname()
+    public function getSurname(): ?string
     {
-        return $this->data->getFieldValue(ArkLDAPItem::FIELD_SURNAME);
+        try {
+            return $this->data->getFieldValue(ArkLDAPItem::FIELD_SURNAME);
+        } catch (ArkLDAPDataInvalid $e) {
+            return null;
+        }
     }
 
-    public function getGivenName()
+    public function getGivenName(): ?string
     {
-        return $this->data->getFieldValue(ArkLDAPItem::FIELD_GIVEN_NAME);
+        try {
+            return $this->data->getFieldValue(ArkLDAPItem::FIELD_GIVEN_NAME);
+        } catch (ArkLDAPDataInvalid $e) {
+            return null;
+        }
     }
 
-    public function getDisplayName()
+    public function getDisplayName():?string
     {
-        return $this->data->getFieldValue(ArkLDAPItem::FIELD_DISPLAY_NAME);
+        try {
+            return $this->data->getFieldValue(ArkLDAPItem::FIELD_DISPLAY_NAME);
+        } catch (ArkLDAPDataInvalid $e) {
+            return null;
+        }
     }
 
-    public function getCompany()
+    public function getCompany():?string
     {
-        return $this->data->getFieldValue(ArkLDAPItem::FIELD_COMPANY);
+        try {
+            return $this->data->getFieldValue(ArkLDAPItem::FIELD_COMPANY);
+        } catch (ArkLDAPDataInvalid $e) {
+            return null;
+        }
     }
 
-    public function getDepartment()
+    public function getDepartment():?string
     {
-        return $this->data->getFieldValue(ArkLDAPItem::FIELD_DEPARTMENT);
+        try {
+            return $this->data->getFieldValue(ArkLDAPItem::FIELD_DEPARTMENT);
+        } catch (ArkLDAPDataInvalid $e) {
+            return null;
+        }
     }
 
-    public function getTitle()
+    public function getTitle():?string
     {
-        return $this->data->getFieldValue(ArkLDAPItem::FIELD_TITLE);
+        try {
+            return $this->data->getFieldValue(ArkLDAPItem::FIELD_TITLE);
+        } catch (ArkLDAPDataInvalid $e) {
+            return null;
+        }
     }
 
-    public function getDescription()
+    public function getDescription():?string
     {
-        return $this->data->getFieldValue(ArkLDAPItem::FIELD_DESCRIPTION);
+        try {
+            return $this->data->getFieldValue(ArkLDAPItem::FIELD_DESCRIPTION);
+        } catch (ArkLDAPDataInvalid $e) {
+            return null;
+        }
     }
 
-    public function getMail()
+    public function getMail():?string
     {
-        return $this->data->getFieldValue(ArkLDAPItem::FIELD_MAIL);
+        try {
+            return $this->data->getFieldValue(ArkLDAPItem::FIELD_MAIL);
+        } catch (ArkLDAPDataInvalid $e) {
+            return null;
+        }
     }
 
     /**
      * @param ArkLDAP $arkLdap
      * @param ArkLDAPDistinguishedNameEntity $dnEntity
-     * @param $entry
-     * @return bool
+     * @param array $entry
+     * @return void
+     * @throws ArkLDAPModifyFailed
      */
-    public static function createNewUser($arkLdap, $dnEntity, $entry = [])
+    public static function createNewUser(ArkLDAP $arkLdap, ArkLDAPDistinguishedNameEntity $dnEntity, array $entry = [])
     {
         $name = $dnEntity->getCommonNameItems()[0];
         $entry['objectclass'] = ["top", "person", "organizationalPerson", "user"];
         $entry['name'] = $name;
-        return $arkLdap->addEntry($dnEntity->generateDNString(), $entry);
+        $arkLdap->addEntry($dnEntity->generateDNString(), $entry);
     }
 
 

@@ -6,17 +6,34 @@ namespace sinri\ark\ldap\entity;
 
 use sinri\ark\ldap\ArkLDAP;
 use sinri\ark\ldap\ArkLDAPItem;
+use sinri\ark\ldap\exception\ArkLDAPDataInvalid;
+use sinri\ark\ldap\exception\ArkLDAPModifyFailed;
+use sinri\ark\ldap\exception\ArkLDAPReadFailed;
 
 /**
  * Class ArkLDAPOrganizationalUnit
+ *
+ * Represents an Organizational Unit (OU) in LDAP directory structure.
+ * Provides methods to manage organizational units including:
+ * - Creating new OUs and sub-OUs
+ * - Managing sub-users and sub-groups
+ * - Managing OU members (if schema allows)
+ * - Retrieving OU information
+ *
  * @package sinri\ark\ldap\entity
  *
- * objectClass,ou,distinguishedName,instanceType,whenCreated,whenChanged,uSNCreated,uSNChanged,name,objectGUID,objectCategory,dSCorePropagationData
+ * Common LDAP attributes for OUs:
+ * - objectClass: Defines the object class type
+ * - ou: The organizational unit name
+ * - distinguishedName: Unique identifier for the OU
+ * - name: Common name of the OU
+ * - whenCreated: Creation timestamp
+ * - whenChanged: Last modified timestamp
  */
 class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
 {
 
-    public function getEntityClassType()
+    public function getEntityClassType(): string
     {
         return "organizationalUnit";
     }
@@ -24,14 +41,15 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
     /**
      * @param ArkLDAP $arkLdap
      * @param string $dn
-     * @return bool|ArkLDAPOrganizationalUnit
+     * @return ArkLDAPOrganizationalUnit
+     * @throws ArkLDAPDataInvalid
+     * @throws ArkLDAPReadFailed
      */
-    public static function loadOrganizationalUnitByDNString($arkLdap, $dn)
+    public static function loadOrganizationalUnitByDNString(ArkLDAP $arkLdap, string $dn): ArkLDAPOrganizationalUnit
     {
-        //$dnEntity=ArkLDAPDistinguishedNameEntity::parseFromDNString($dn);
         $list = $arkLdap->readAll($dn, "name=*");
-        if (empty($list)) {
-            return false;
+        if (!array_key_exists(0, $list)) {
+            throw new ArkLDAPDataInvalid("No OU found for DN $dn");
         }
         $arkOU = new ArkLDAPOrganizationalUnit($arkLdap);
         $arkOU->data = $list[0];
@@ -39,7 +57,11 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
         return $arkOU;
     }
 
-    public function getOU()
+    /**
+     * @return string
+     * @throws ArkLDAPDataInvalid
+     */
+    public function getOU(): string
     {
         return $this->data->getFieldValue(ArkLDAPItem::FIELD_ORGANIZATION_NAME);
     }
@@ -47,47 +69,55 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
     /**
      * @param ArkLDAP $arkLdap
      * @param ArkLDAPDistinguishedNameEntity $dnEntity
-     * @param $entry
-     * @return bool
+     * @param array $entry
+     * @return void
+     * @throws ArkLDAPModifyFailed
      */
-    public static function createNewOrganizationalUnit($arkLdap, $dnEntity, $entry = [])
+    public static function createNewOrganizationalUnit(ArkLDAP $arkLdap, ArkLDAPDistinguishedNameEntity $dnEntity, array $entry = [])
     {
         // to be tested
         $name = $dnEntity->getOrganizationalUnitItems()[0];
         $entry['objectclass'] = ["top", "organizationalUnit"];
 //        $entry['distinguishedname']=$name;
         $entry['name'] = $name;
-        return $arkLdap->addEntry($dnEntity->generateDNString(), $entry);
+        $arkLdap->addEntry($dnEntity->generateDNString(), $entry);
     }
 
-    public function createSubOrganizationalUnit($name, $attributes = [])
+    /**
+     * @param string $name
+     * @param array $attributes
+     * @throws ArkLDAPModifyFailed
+     */
+    public function createSubOrganizationalUnit(string $name, array $attributes = [])
     {
         $dn = $this->dnEntity->makeSubItemDNWithOU($name)->generateDNString();
         $entry = $attributes;
         $entry['objectclass'] = ["top", "organizationalUnit"];
 //        $entry['distinguishedname']=$name;
         $entry['name'] = $name;
-        return $this->arkLdap->addEntry($dn, $entry);
+        $this->arkLdap->addEntry($dn, $entry);
     }
 
     /**
-     * @param $name
+     * @param string $name
      * @param array $attributes
-     * @return bool
+     * @return void
+     * @throws ArkLDAPModifyFailed
      */
-    public function createSubUser($name, $attributes = [])
+    public function createSubUser(string $name, array $attributes = [])
     {
         $userDNEntity = $this->dnEntity->makeSubItemDNWithCN($name);
-        return ArkLDAPUser::createNewUser($this->arkLdap, $userDNEntity, $attributes);
+        ArkLDAPUser::createNewUser($this->arkLdap, $userDNEntity, $attributes);
     }
 
     /**
      * @return ArkLDAPUser[]
+     * @throws ArkLDAPDataInvalid
+     * @throws ArkLDAPReadFailed
      */
-    public function getSubUsers()
+    public function getSubUsers(): array
     {
         $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "(&(cn=*)(objectclass=user))");
-        if (empty($subOUs)) return [];
         $list = [];
         foreach ($subOUs as $subOUItem) {
             $list[] = ArkLDAPUser::loadUserByDNString($this->arkLdap, $subOUItem->getDN());
@@ -96,23 +126,28 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
     }
 
     /**
-     * @param $name
-     * @return bool|ArkLDAPUser
+     * @param string $name
+     * @return ArkLDAPUser
+     * @throws ArkLDAPDataInvalid
+     * @throws ArkLDAPReadFailed
      */
-    public function getSubUserByName($name)
+    public function getSubUserByName(string $name): ArkLDAPUser
     {
         $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "(&(cn=" . ArkLDAP::escapeSearchFilterArgument($name) . ")(objectclass=user))");
-        if (empty($subOUs)) return false;
+        if (!array_key_exists(0, $subOUs)) {
+            throw new ArkLDAPDataInvalid("Sub User is not found for name $name");
+        }
         return ArkLDAPUser::loadUserByDNString($this->arkLdap, $subOUs[0]->getDN());
     }
 
     /**
      * @return ArkLDAPGroup[]
+     * @throws ArkLDAPDataInvalid
+     * @throws ArkLDAPReadFailed
      */
-    public function getSubGroups()
+    public function getSubGroups(): array
     {
         $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "(&(cn=*)(objectclass=group))");
-        if (empty($subOUs)) return [];
         $list = [];
         foreach ($subOUs as $subOUItem) {
             $list[] = ArkLDAPGroup::loadGroupByDNString($this->arkLdap, $subOUItem->getDN());
@@ -122,22 +157,27 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
 
     /**
      * @param string $name
-     * @return bool|ArkLDAPGroup
+     * @return ArkLDAPGroup
+     * @throws ArkLDAPDataInvalid
+     * @throws ArkLDAPReadFailed
      */
-    public function getSubGroupByName($name)
+    public function getSubGroupByName(string $name): ArkLDAPGroup
     {
         $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "(&(cn=" . ArkLDAP::escapeSearchFilterArgument($name) . ")(objectclass=group))");
-        if (empty($subOUs)) return false;
+        if (!array_key_exists(0, $subOUs)) {
+            throw new ArkLDAPDataInvalid("Sub Group is not found for name $name");
+        }
         return ArkLDAPGroup::loadGroupByDNString($this->arkLdap, $subOUs[0]->getDN());
     }
 
     /**
      * @return ArkLDAPOrganizationalUnit[]
+     * @throws ArkLDAPDataInvalid
+     * @throws ArkLDAPReadFailed
      */
-    public function getSubOrganizationalUnits()
+    public function getSubOrganizationalUnits(): array
     {
         $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "ou=*");
-        if (empty($subOUs)) return [];
         $list = [];
         foreach ($subOUs as $subOUItem) {
             $list[] = ArkLDAPOrganizationalUnit::loadOrganizationalUnitByDNString($this->arkLdap, $subOUItem->getDN());
@@ -147,23 +187,28 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
 
     /**
      * @param string $name
-     * @return bool|ArkLDAPOrganizationalUnit
+     * @return ArkLDAPOrganizationalUnit
+     * @throws ArkLDAPDataInvalid
+     * @throws ArkLDAPReadFailed
      */
-    public function getSubOrganizationalUnitByName($name)
+    public function getSubOrganizationalUnitByName(string $name): ArkLDAPOrganizationalUnit
     {
         $subOUs = $this->arkLdap->listAll($this->dnEntity->generateDNString(), "ou=" . ArkLDAP::escapeSearchFilterArgument($name));
-        if (empty($subOUs)) return false;
+        if (!array_key_exists(0, $subOUs)) {
+            throw new ArkLDAPDataInvalid("Sub Org is not found for name $name");
+        }
         return ArkLDAPOrganizationalUnit::loadOrganizationalUnitByDNString($this->arkLdap, $subOUs[0]->getDN());
     }
 
     /**
      * WARNING: MAY NOT AVAILABLE FOR CERTAIN SCHEMA SETTINGS
      * @return ArkLDAPUser[]
+     * @throws ArkLDAPDataInvalid
+     * @throws ArkLDAPReadFailed
      */
-    public function getMembers()
+    public function getMembers(): array
     {
         $members = $this->data->getFieldValues('member');
-        if (empty($members)) return [];
         $memberUsers = [];
         foreach ($members as $memberDN) {
             $memberUsers[] = ArkLDAPUser::loadUserByDNString($this->arkLdap, $memberDN);
@@ -173,31 +218,31 @@ class ArkLDAPOrganizationalUnit extends ArkLDAPTopEntity
 
     /**
      * WARNING: MAY NOT AVAILABLE FOR CERTAIN SCHEMA SETTINGS
-     * @param $members
-     * @return bool
+     * @param array $members
+     * @throws ArkLDAPModifyFailed
      */
-    public function addMembers($members)
+    public function addMembers(array $members)
     {
-        return $this->arkLdap->modifyEntryAddAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
+        $this->arkLdap->modifyEntryAddAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
+    }
+
+    /**
+     * WARNING: MAY NOT AVAILABLE FOR CERTAIN SCHEMA SETTINGS
+     * @param array $members
+     * @throws ArkLDAPModifyFailed
+     */
+    public function removeMembers(array $members)
+    {
+        $this->arkLdap->modifyEntryDeleteAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
     }
 
     /**
      * WARNING: MAY NOT AVAILABLE FOR CERTAIN SCHEMA SETTINGS
      * @param $members
-     * @return bool
-     */
-    public function removeMembers($members)
-    {
-        return $this->arkLdap->modifyEntryDeleteAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
-    }
-
-    /**
-     * WARNING: MAY NOT AVAILABLE FOR CERTAIN SCHEMA SETTINGS
-     * @param $members
-     * @return bool
+     * @throws ArkLDAPModifyFailed
      */
     public function setMembers($members)
     {
-        return $this->arkLdap->modifyEntryReplaceAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
+        $this->arkLdap->modifyEntryReplaceAttributes($this->dnEntity->generateDNString(), ['member' => $members]);
     }
 }
