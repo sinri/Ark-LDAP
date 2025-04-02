@@ -4,7 +4,6 @@
 namespace sinri\ark\ldap\entity;
 
 
-use Exception;
 use sinri\ark\ldap\ArkLDAP;
 use sinri\ark\ldap\ArkLDAPItem;
 use sinri\ark\ldap\exception\ArkLDAPDataInvalid;
@@ -101,7 +100,7 @@ class ArkLDAPTopEntity
      * changing its location in the directory hierarchy.
      *
      * @param ArkLDAPDistinguishedNameEntity $newDNEntity
-     * @throws Exception if the move operation fails or the destination is invalid
+     * @throws ArkLDAPModifyFailed
      */
     public function move(ArkLDAPDistinguishedNameEntity $newDNEntity)
     {

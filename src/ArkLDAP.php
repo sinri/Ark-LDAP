@@ -2,7 +2,6 @@
 namespace sinri\ark\ldap;
 
 
-use Exception;
 use sinri\ark\core\ArkLogger;
 use sinri\ark\ldap\exception\ArkLDAPBindAuthFailed;
 use sinri\ark\ldap\exception\ArkLDAPConnectFailed;
@@ -395,7 +394,6 @@ class ArkLDAP
      * @param string|null $oldPassword The user's current password (can be null if not required)
      * @param string|null $newPassword The new password to set (can be null to generate a random password)
      * @return bool|string Returns true on success, or the generated password if newPassword was null
-     * @throws Exception When the password modification operation fails
      * @since 0.0.3
      * @uses PHP 7.2
      */

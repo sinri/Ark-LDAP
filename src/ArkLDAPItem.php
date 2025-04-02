@@ -108,7 +108,7 @@ class ArkLDAPItem extends ArkLDAPObjectClass
      */
     public function getFieldValueCount(string $fieldName): int
     {
-        $objectClass = $this->getObjectClassByIndex($fieldName);
+        $objectClass = $this->getAttributeAsObjectClass($fieldName);
         return $objectClass->getCount();
     }
 
@@ -126,7 +126,7 @@ class ArkLDAPItem extends ArkLDAPObjectClass
      */
     public function getFieldValue(string $fieldName, int $index = 0)
     {
-        $objectClass = $this->getObjectClassByIndex($fieldName);
+        $objectClass = $this->getAttributeAsObjectClass($fieldName);
         $rawItem = $objectClass->getRawItemByIndex($index);
 
         if (in_array($fieldName, [
@@ -153,7 +153,7 @@ class ArkLDAPItem extends ArkLDAPObjectClass
      */
     public function getFieldValues(string $fieldName): array
     {
-        $objectClass = $this->getObjectClassByIndex($fieldName);
+        $objectClass = $this->getAttributeAsObjectClass($fieldName);
         $values = [];
         for ($i = 0; $i < $objectClass->getCount(); $i++) {
             $values[] = $objectClass->getRawItemByIndex($i);

@@ -10,13 +10,13 @@ use sinri\ark\ldap\exception\ArkLDAPDataInvalid;
  * Class ArkLDAPObjectClass
  * This class provides a wrapper for LDAP object class data structures.
  * It handles the raw array data returned from LDAP operations and provides methods to access and manipulate this data.
- * 
+ *
  * Key features:
  * - Wraps raw LDAP array data
  * - Provides safe access to count and indexed items
  * - Handles type checking and validation
  * - Throws ArkLDAPDataInvalid exceptions for invalid operations
- * 
+ *
  * @package sinri\ark\ldap
  */
 class ArkLDAPObjectClass
@@ -40,13 +40,25 @@ class ArkLDAPObjectClass
      */
     public function getCount(): int
     {
-        if (!array_key_exists('count', $this->rawArray)) {
-            throw new ArkLDAPDataInvalid("Key count is not found.");
-        }
-        $x = $this->rawArray['count'];
+        $x = $this->getAttribute('count');
         if (!is_int($x)) {
             throw new ArkLDAPDataInvalid("Value mapped to key count is not an integer.");
         }
+        return $x;
+    }
+
+    /**
+     * @param string $attributeName
+     * @return mixed
+     * @throws ArkLDAPDataInvalid
+     * @since 0.0.6
+     */
+    public function getAttribute(string $attributeName)
+    {
+        if (!array_key_exists($attributeName, $this->rawArray)) {
+            throw new ArkLDAPDataInvalid("Key $attributeName is not found.");
+        }
+        $x = $this->rawArray[$attributeName];
         return $x;
     }
 
@@ -79,6 +91,21 @@ class ArkLDAPObjectClass
     public function getObjectClassByIndex(int $index): ArkLDAPObjectClass
     {
         $rawItem = $this->getRawItemByIndex($index);
+        if (!is_array($rawItem)) {
+            throw new ArkLDAPDataInvalid("LDAP Object Class is null.");
+        }
+        return new ArkLDAPObjectClass($rawItem);
+    }
+
+    /**
+     * @param string $attributeName
+     * @return ArkLDAPObjectClass
+     * @throws ArkLDAPDataInvalid
+     * @since 0.0.6
+     */
+    public function getAttributeAsObjectClass(string $attributeName): ArkLDAPObjectClass
+    {
+        $rawItem = $this->getAttribute($attributeName);
         if (!is_array($rawItem)) {
             throw new ArkLDAPDataInvalid("LDAP Object Class is null.");
         }
