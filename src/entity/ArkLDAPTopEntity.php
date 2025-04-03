@@ -104,6 +104,8 @@ class ArkLDAPTopEntity
      */
     public function move(ArkLDAPDistinguishedNameEntity $newDNEntity)
     {
+        $name="";
+        $parent="";
         $newDNEntity->loadMoveDestinationArguments($name, $parent);
         $this->arkLdap->moveEntry($this->dnEntity->generateDNString(), $name, $parent);
     }
