@@ -4,6 +4,7 @@
 namespace sinri\ark\ldap\entity;
 
 
+use InvalidArgumentException;
 use sinri\ark\core\ArkHelper;
 
 /**
@@ -113,7 +114,7 @@ class ArkLDAPDistinguishedNameEntity
             if (count($parts) < 1) continue;
             $key = strtolower($parts[0]);
             $value = $parts[1];
-            $result[$key][] = $value;
+            $result[$key][] = static::unescapeDNComponent($value);
         }
 
         $entity = new ArkLDAPDistinguishedNameEntity();
@@ -185,4 +186,43 @@ class ArkLDAPDistinguishedNameEntity
             $parent = $this->generateDNString();
         }
     }
+
+    /**
+     * Unescapes a string that contains escaped characters in the form of \xx, where xx is a two-digit hexadecimal number.
+     *
+     * @param string $escaped The string to unescape. It should contain valid escape sequences in the form of \xx.
+     * @return string The unescaped string.
+     * @throws InvalidArgumentException If an invalid escape sequence is encountered.
+     * @since 0.0.8
+     */
+    public static function unescapeDNComponent(string $escaped): string
+    {
+        if (strlen($escaped) === 0) {
+            return '';
+        }
+
+
+        $unescaped = '';
+        $i = 0;
+        $length = strlen($escaped);
+
+        while ($i < $length) {
+            if ($escaped[$i] === '\\' && $i + 2 < $length) {
+                $hex = substr($escaped, $i + 1, 2);
+                if (ctype_xdigit($hex)) {
+                    $unescaped .= chr(hexdec($hex));
+                    $i += 3;
+                    continue;
+                } else {
+                    // 处理不完整的转义序列
+                    throw new InvalidArgumentException("Invalid escape sequence: \\{$hex}");
+                }
+            }
+            $unescaped .= $escaped[$i];
+            $i++;
+        }
+
+        return $unescaped;
+    }
+
 }
