@@ -58,8 +58,7 @@ class ArkLDAPObjectClass
         if (!array_key_exists($attributeName, $this->rawArray)) {
             throw new ArkLDAPDataInvalid("Key $attributeName is not found.");
         }
-        $x = $this->rawArray[$attributeName];
-        return $x;
+        return $this->rawArray[$attributeName];
     }
 
     /**

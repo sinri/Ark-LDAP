@@ -4,8 +4,8 @@
 namespace sinri\ark\ldap\entity;
 
 
-use InvalidArgumentException;
 use sinri\ark\core\ArkHelper;
+use sinri\ark\ldap\ArkLDAP;
 
 /**
  * Represents an LDAP Distinguished Name (DN) entity, which is used to uniquely identify entries in an LDAP directory.
@@ -16,6 +16,8 @@ use sinri\ark\core\ArkHelper;
  * - dc (Domain Component)
  *
  * Example: cn=John Doe,ou=People,dc=example,dc=com
+ *
+ * Note: As of 0.0.10, all components are escaped.
  */
 class ArkLDAPDistinguishedNameEntity
 {
@@ -31,20 +33,53 @@ class ArkLDAPDistinguishedNameEntity
      * @param string[] $cn An array of common name items.
      * @param string[] $ou An array of organizational unit items.
      * @param string[] $dc An array of domain component items.
+     * @param bool $escaped if the provided components are escaped.
      */
-    public function __construct(array $cn = [], array $ou = [], array $dc = [])
+    public function __construct(array $cn = [], array $ou = [], array $dc = [], bool $escaped = false)
     {
-        $this->dict = [
-            self::COMMON_NAME => $cn,
-            self::ORGANIZATIONAL_UNIT => $ou,
-            self::DOMAIN_COMPONENT => $dc,
-        ];
+        if ($escaped) {
+            $this->dict = [
+                self::COMMON_NAME => $cn,
+                self::ORGANIZATIONAL_UNIT => $ou,
+                self::DOMAIN_COMPONENT => $dc,
+            ];
+        } else {
+            $this->dict = [
+                self::COMMON_NAME => $this->escapeDNComponents($cn),
+                self::ORGANIZATIONAL_UNIT => $this->escapeDNComponents($ou),
+                self::DOMAIN_COMPONENT => $this->escapeDNComponents($dc),
+            ];
+        }
+    }
+
+    /**
+     * @param string $dnComponent
+     * @return string
+     * @since 0.0.10
+     */
+    private function escapeOneDNComponent(string $dnComponent): string
+    {
+        return ArkLDAP::escapeDNArgument($dnComponent);
+    }
+
+    /**
+     * @param string[] $dnComponents
+     * @return string[]
+     * @since 0.0.10
+     */
+    private function escapeDNComponents(array $dnComponents): array
+    {
+        $a = [];
+        foreach ($dnComponents as $dnComponent) {
+            $a[] = $this->escapeOneDNComponent($dnComponent);
+        }
+        return $a;
     }
 
     /**
      * Retrieves the domain component items from the dictionary.
      *
-     * @return string[] An array of domain component items.
+     * @return string[] An array of domain component items, each of them are escaped.
      */
     public function getDomainComponentItems(): array
     {
@@ -55,7 +90,7 @@ class ArkLDAPDistinguishedNameEntity
     /**
      * Retrieves the organizational unit items from the dictionary.
      *
-     * @return string[] An array of organizational unit items.
+     * @return string[] An array of organizational unit items, each of them are escaped.
      */
     public function getOrganizationalUnitItems(): array
     {
@@ -65,7 +100,7 @@ class ArkLDAPDistinguishedNameEntity
     /**
      * Retrieves the common name items from the dictionary.
      *
-     * @return string[] An array of common name items.
+     * @return string[] An array of common name items, each of them are escaped.
      */
     public function getCommonNameItems(): array
     {
@@ -82,15 +117,15 @@ class ArkLDAPDistinguishedNameEntity
         $dn = "";
         $cns = $this->getCommonNameItems();
         foreach ($cns as $cn) {
-            $dn .= ($dn !== '' ? ',' : '') . 'cn=' . ldap_escape($cn, "", LDAP_ESCAPE_DN);
+            $dn .= ($dn !== '' ? ',' : '') . 'cn=' . $cn;
         }
         $ous = $this->getOrganizationalUnitItems();
         foreach ($ous as $ou) {
-            $dn .= ($dn !== '' ? ',' : '') . 'ou=' . ldap_escape($ou, "", LDAP_ESCAPE_DN);
+            $dn .= ($dn !== '' ? ',' : '') . 'ou=' . $ou;
         }
         $dcs = $this->getDomainComponentItems();
         foreach ($dcs as $dc) {
-            $dn .= ($dn !== '' ? ',' : '') . 'dc=' . ldap_escape($dc, "", LDAP_ESCAPE_DN);
+            $dn .= ($dn !== '' ? ',' : '') . 'dc=' . $dc;
         }
         return $dn;
     }
@@ -98,7 +133,7 @@ class ArkLDAPDistinguishedNameEntity
     /**
      * Parses a Distinguished Name (DN) string and returns an ArkLDAPDistinguishedNameEntity object.
      *
-     * @param string $dn The DN string to be parsed.
+     * @param string $dn The DN string to be parsed, should be fully escaped as DN.
      * @return ArkLDAPDistinguishedNameEntity An object containing the parsed components of the DN string.
      */
     public static function parseFromDNString(string $dn): ArkLDAPDistinguishedNameEntity
@@ -114,7 +149,7 @@ class ArkLDAPDistinguishedNameEntity
             if (count($parts) < 1) continue;
             $key = strtolower($parts[0]);
             $value = $parts[1];
-            $result[$key][] = static::unescapeDNComponent($value);
+            $result[$key][] = $value;
         }
 
         $entity = new ArkLDAPDistinguishedNameEntity();
@@ -129,11 +164,15 @@ class ArkLDAPDistinguishedNameEntity
      * @param string $dcName The name of the domain component to be added.
      * @return ArkLDAPDistinguishedNameEntity A new instance of ArkLDAPDistinguishedNameEntity with the updated domain component.
      */
-    public function makeSubItemDNWithDC(string $dcName): ArkLDAPDistinguishedNameEntity
+    public function makeSubItemDNWithDC(string $dcName, bool $escaped = false): ArkLDAPDistinguishedNameEntity
     {
+        $x = $dcName;
+        if (!$escaped) {
+            $x = $this->escapeOneDNComponent($dcName);
+        }
         $newEntity = new ArkLDAPDistinguishedNameEntity();
         $newEntity->dict = $this->dict;
-        array_unshift($newEntity->dict[self::DOMAIN_COMPONENT], $dcName);
+        array_unshift($newEntity->dict[self::DOMAIN_COMPONENT], $x);
         return $newEntity;
     }
 
@@ -143,11 +182,15 @@ class ArkLDAPDistinguishedNameEntity
      * @param string $ouName The name of the organizational unit to add.
      * @return ArkLDAPDistinguishedNameEntity A new instance of ArkLDAPDistinguishedNameEntity with the updated OU.
      */
-    public function makeSubItemDNWithOU(string $ouName): ArkLDAPDistinguishedNameEntity
+    public function makeSubItemDNWithOU(string $ouName, bool $escaped = false): ArkLDAPDistinguishedNameEntity
     {
+        $x = $ouName;
+        if (!$escaped) {
+            $x = $this->escapeOneDNComponent($ouName);
+        }
         $newEntity = new ArkLDAPDistinguishedNameEntity();
         $newEntity->dict = $this->dict;
-        array_unshift($newEntity->dict[self::ORGANIZATIONAL_UNIT], $ouName);
+        array_unshift($newEntity->dict[self::ORGANIZATIONAL_UNIT], $x);
         return $newEntity;
     }
 
@@ -157,19 +200,23 @@ class ArkLDAPDistinguishedNameEntity
      * @param string $cnName The common name to be added to the Distinguished Name (DN).
      * @return ArkLDAPDistinguishedNameEntity A new entity with the updated CN.
      */
-    public function makeSubItemDNWithCN(string $cnName): ArkLDAPDistinguishedNameEntity
+    public function makeSubItemDNWithCN(string $cnName, bool $escaped = false): ArkLDAPDistinguishedNameEntity
     {
+        $x = $cnName;
+        if (!$escaped) {
+            $x = $this->escapeOneDNComponent($cnName);
+        }
         $newEntity = new ArkLDAPDistinguishedNameEntity();
         $newEntity->dict = $this->dict;
-        array_unshift($newEntity->dict[self::COMMON_NAME], $cnName);
+        array_unshift($newEntity->dict[self::COMMON_NAME], $x);
         return $newEntity;
     }
 
     /**
      * Loads the move destination arguments for a distinguished name (DN) based on the available common name, organizational unit, or domain component.
      *
-     * @param string $name Reference to the variable that will hold the name part of the DN.
-     * @param string $parent Reference to the variable that will hold the parent part of the DN.
+     * @param string $name Reference to the variable that will hold the name part of the DN, escaped.
+     * @param string $parent Reference to the variable that will hold the parent part of the DN, escaped.
      *
      * @return void
      */
@@ -186,42 +233,4 @@ class ArkLDAPDistinguishedNameEntity
             $parent = $this->generateDNString();
         }
     }
-
-    /**
-     * Unescapes a string that contains escaped characters in the form of \xx, where xx is a two-digit hexadecimal number.
-     *
-     * @param string $escaped The string to unescape. It should contain valid escape sequences in the form of \xx.
-     * @return string The unescaped string.
-     * @throws InvalidArgumentException If an invalid escape sequence is encountered.
-     * @since 0.0.8
-     */
-    public static function unescapeDNComponent(string $escaped): string
-    {
-        if (strlen($escaped) === 0) {
-            return '';
-        }
-
-        // 正则表达式匹配所有LDAP转义序列：\XX（两位十六进制）
-        $unescaped = preg_replace_callback(
-            '/\\\\([0-9A-Fa-f]{2})/', // 匹配 \ 后跟两位十六进制
-            function ($matches) {
-                // 将十六进制转换为对应的字符
-                $hexValue = hexdec($matches[1]);
-                if ($hexValue === 0 && !ctype_xdigit($matches[1])) {
-                    throw new InvalidArgumentException("Invalid hex sequence: " . $matches[0]);
-                }
-                return chr($hexValue);
-            },
-            $escaped
-        );
-
-        // 处理连续反斜杠的情况（如 \\\\ → \\）
-        // 注意：ldap_escape转义反斜杠为 \5c，所以反转义后应恢复为单个反斜杠
-        // 但原始字符串中的连续反斜杠可能被转义为多个\5c，因此需要确保正确还原
-        // 例如，原始字符串 "\\" 被转义为 "\5c5c"，反转义后应为 "\\"（两个反斜杠）
-        // 此处无需额外处理，因为正则表达式已经覆盖所有转义序列
-
-        return $unescaped;
-    }
-
 }
