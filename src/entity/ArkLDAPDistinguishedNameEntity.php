@@ -201,26 +201,25 @@ class ArkLDAPDistinguishedNameEntity
             return '';
         }
 
-
-        $unescaped = '';
-        $i = 0;
-        $length = strlen($escaped);
-
-        while ($i < $length) {
-            if ($escaped[$i] === '\\' && $i + 2 < $length) {
-                $hex = substr($escaped, $i + 1, 2);
-                if (ctype_xdigit($hex)) {
-                    $unescaped .= chr(hexdec($hex));
-                    $i += 3;
-                    continue;
-                } else {
-                    // 处理不完整的转义序列
-                    throw new InvalidArgumentException("Invalid escape sequence: \\{$hex}");
+        // 正则表达式匹配所有LDAP转义序列：\XX（两位十六进制）
+        $unescaped = preg_replace_callback(
+            '/\\\\([0-9A-Fa-f]{2})/', // 匹配 \ 后跟两位十六进制
+            function ($matches) {
+                // 将十六进制转换为对应的字符
+                $hexValue = hexdec($matches[1]);
+                if ($hexValue === 0 && !ctype_xdigit($matches[1])) {
+                    throw new InvalidArgumentException("Invalid hex sequence: " . $matches[0]);
                 }
-            }
-            $unescaped .= $escaped[$i];
-            $i++;
-        }
+                return chr($hexValue);
+            },
+            $escaped
+        );
+
+        // 处理连续反斜杠的情况（如 \\\\ → \\）
+        // 注意：ldap_escape转义反斜杠为 \5c，所以反转义后应恢复为单个反斜杠
+        // 但原始字符串中的连续反斜杠可能被转义为多个\5c，因此需要确保正确还原
+        // 例如，原始字符串 "\\" 被转义为 "\5c5c"，反转义后应为 "\\"（两个反斜杠）
+        // 此处无需额外处理，因为正则表达式已经覆盖所有转义序列
 
         return $unescaped;
     }
